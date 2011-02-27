@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# Speicherplatzüberprüfung
+echo "Überprüfe Plattenplatz auf '/media/media'...";
+frei=`df -h | grep '/media/media' | awk '{ print 100 - $5 ; }'`;
+if [ !$frei ] ; then
+        echo "...genug Speicherplatz verfügbar"
+else
+        echo "Breche Umwandlung ab!" && exit 0
+fi;
+
+# In Arbeitsordner wechseln
+echo "Wechsle in Arbeitsordner..."
+cd $1 && echo "...fertig."
+
+# Temporärordner erstellen
+echo "Temporärer Ordner '/tmp/video' wird erstellt...";
+mkdir /tmp/video && echo "...fertig."
+
+# Dateien in Temporärordner kopieren und Dateinamen ermitteln
+echo "Kopiere Videodaten in den temporären Ordner..."
+cp ${1}* /tmp/video/ && echo "...fertig."
+#cp info.vdr /tmp/video/
+title=`grep 'T\ ' /tmp/video/info.vdr | cut -b 3- | tr / - | tr " " _`
+episode=`grep 'S\ ' /tmp/video/info.vdr | cut -b 3-| tr / - | tr " " _`
+cp /tmp/video/info.vdr /media/media/video/vdr/${title}_-_${episode}.info
+
+#Mehrere *.vdr zusammenführen
+cd /tmp/video/
+count=`ls | egrep -c 0..vdr`
+case $count in
+	1 ) echo "Eine Datei gefunden. Fahre mit demultiplexen fort."
+	;;
+	2 ) echo "Zwei Dateien wurden gefunden. Füge Dateien zusammen..."
+	cat 001.vdr 002.vdr > movie.vdr && rm 00*.vdr && mv movie.vdr 001.vdr && echo "...fertig. Fahre mit demultiplexen fort."
+	;;
+	3 ) echo "Drei Dateien wurden gefunden. Füge Dateien zusammen..."
+	cat 001.vdr 002.vdr 003.vdr > movie.vdr && rm 00*.vdr && mv movie.vdr 001.vdr && mv movie.vdr 001.vdr && echo "...fertig. Fahre mit demultiplexen fort."
+	;;
+        4 ) echo "Vier Dateien wurden gefunden. Füge Dateien zusammen..."
+	cat 001.vdr 002.vdr 003.vdr 004.vdr > movie.vdr && rm 00*.vdr && mv movie.vdr 001.vdr && echo "...fertig. Fahre mit demultiplexen fort."
+	;;
+	5 ) echo "Fünf Dateien wurden gefunden. Füge Dateien zusammen..."
+	cat 001.vdr 002.vdr 003.vdr 004.vdr 005.vdr > movie.vdr && rm 00*.vdr && mv movie.vdr 001.vdr && echo "...fertig. Fahre mit demultiplexen fort."
+	;;
+	6 ) echo "Sechs Dateien wurden gefunden. Füge Dateien zusammen..."
+	cat 001.vdr 002.vdr 003.vdr 004.vdr 005.vdr 006.vdr > movie.vdr && rm 00*.vdr && mv movie.vdr 001.vdr && echo "...fertig. Fahre mit demultiplexen fort."
+	;;
+	* ) echo "Mehr als 6 Dateien zu Demultiplexen gefunden. Breche Programm ab. Bitte führen Sie die Dateien manuell zusammen."
+	echo "Lösche Temporärordner '/tmp/video'..."
+	rm -R /tmp/video && echo "...fertig."
+	exit 0
+	;;
+esac
+
+# Remultiplexing starten
+echo "Demultiplexer wird gestartet...";
+projectx -demux -out ./ 001.vdr && rm *.vdr && echo "...fertig."
+echo "Starte Remultiplexvorgang...";
+mplex -f 3 *.m2v *.mp2 -o /media/media/video/vdr/${title}_-_${episode}.mpg && rm *.m2v *.mp2 && echo "...fertig.";
+#echo "Speichere Video in /media/media/video...";
+#mv /tmp/video/001.mpg /media/media/video/vdr/${title}_-_${episode}.mpg && echo "...fertig."
+
+# Temporärordner löschen
+echo "Lösche Temporärordner '/tmp/video'..."
+rm -R /tmp/video && echo "...fertig."
+
+# Löschen der vdr-Dateien und Aktualisieren der Aufnahmelisten
+echo "Lösche vdr-Dateien..."
+#cd $1 && cd ..
+rm -R $1 && echo "...fertig."
+#echo "Überprüfe, ob Überordner gelöscht werden kann..."
+#rmdir . && "...Überordner wird gelöscht." || "...es befinden sich weitere Unterordner im Verzeichnis. Löschvorgang wird abgebrochen."
+echo "Aktualisiere Aufnahmeliste..."
+touch /var/lib/video/.update && echo "...fertig."
+echo "Beende Programm."
