@@ -116,3 +116,6 @@ export JAVA_HOME=/usr/lib/jvm/java-6-sun
 export INTELLIJ_HOME=/opt/intellij
 export PATH=$INTELLIJ_HOME/bin:$PATH
 export APPENGINE_HOME=/opt/appengine
+
+# Always at the end of the .bashrc !!!
+[[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm"  # This loads RVM into a shell session.
